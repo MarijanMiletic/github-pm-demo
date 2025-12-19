@@ -1,118 +1,101 @@
-# GitHub Project Management Priručnik (CLI Verzija)
+# GitHub Priručnik za Upravljanje Projektima i Inženjerstvo
 
-Ovaj dokument opisuje kompletan proces postavljanja profesionalnog GitHub repozitorija s naprednim Project Management funkcijama koristeći GitHub CLI (`gh`).
+Ovaj priručnik dokumentira potpuni proces postavljanja i vođenja profesionalnog GitHub repozitorija koristeći GitHub CLI (`gh`).
 
-## 1. Inicijalizacija Projekta
-**Uloga:** Project Manager / Tech Lead
+---
+
+## 1. Inicijalizacija i Arhitektura
+**Uloga:** Tech Lead / Arhitekt
 
 ```bash
-# Kreiraj mapu i osnovne datoteke
-mkdir moj-projekt
-cd moj-projekt
-echo "# Moj Projekt" > README.md
+# Postavljanje strukture
+mkdir moj-projekt && cd moj-projekt
 echo "src/" > .gitignore
+echo "tests/" >> .gitignore
+echo "# Moj Profesionalni Projekt" > README.md
 
-# Inicijaliziraj Git
-git init
-git add .
-git commit -m "Inicijalni commit"
-
-# Kreiraj i pošalji na GitHub
+# Git inicijalizacija
+git init && git add . && git commit -m "Chore: Inicijalizacija projekta"
 gh repo create moj-projekt --public --source=. --remote=origin --push
 ```
 
-## 2. Postavljanje Projektne Ploče (Project Board V2)
-**Uloga:** Project Manager
+## 2. Napredno Planiranje (V2 Projekti)
+**Uloga:** Senior Project Manager
 
+### Postavljanje i Povezivanje
 ```bash
-# Kreiraj Projekt
-# Napomena: Ovo inicijalno kreira projekt na razini korisnika.
-gh project create --owner <USERNAME> --title "Product Roadmap" --format json
+# Kreiraj projektnu ploču (Kanban)
+gh project create --owner <USER> --title "Strateški Plan" --format json
 
-# VAŽNO: Povezivanje Projekta s Repozitorijem
-# (Zahtijeva GraphQL jer CLI to još ne podržava nativno)
-# 1. Nabavi Project ID (Node ID, počinje s PVT_...)
-# 2. Nabavi Repo ID (Node ID, počinje s R_...)
-# 3. Pokreni Mutaciju:
+# POVEŽI PROJEKT S REPOZITORIJEM (Ključno za vidljivost)
+# Koristi GraphQL za povezivanje Project ID-a (PVT_...) i Repo ID-a (R_...)
 gh api graphql -f query=' 
-  mutation($projectId: ID!, $repoId: ID!) {
-    linkProjectV2ToRepository(input: { projectId: $projectId, repositoryId: $repoId }) {
-      repository { name }
-    }
-  }' -f projectId="<PROJECT_ID>" -f repoId="<REPO_ID>"
+  mutation($projectId: ID!, $repoId: ID!) { 
+    linkProjectV2ToRepository(input: { projectId: $projectId, repositoryId: $repoId }) { 
+      repository { name } 
+    } 
+  }' -f projectId="<PROJ_ID>" -f repoId="<REPO_ID>"
 ```
 
-## 3. Planiranje i Roadmapping
-**Uloga:** Project Manager
-
-### Kreiranje Milestones (Sprintova)
+### Vizualizacija (Roadmap/Vremenska crta)
 ```bash
-gh api repos/<OWNER>/<REPO>/milestones -f title="Sprint 1" -f due_on="2025-12-30T17:00:00Z"
+# Kreiraj datumska polja za Roadmap prikaz
+gh project field-create <PROJ_NUM> --owner <USER> --name "Start Date" --data-type DATE
+gh project field-create <PROJ_NUM> --owner <USER> --name "Due Date" --data-type DATE
 ```
 
-### Kreiranje Custom Polja (Datumi)
+## 3. Standardi Zajednice i Upravljanje (Governance)
+**Uloga:** Compliance / Project Manager
+*Ove datoteke osiguravaju da projekt zadovoljava "GitHub Community Standards".*
 
 ```bash
-# Dodaj Start Date i Due Date za Timeline prikaz (Roadmap)
-gh project field-create <PROJECT_NUMBER> --owner <USERNAME> --name "Start Date" --data-type DATE
-gh project field-create <PROJECT_NUMBER> --owner <USERNAME> --name "Due Date" --data-type DATE
+# Kreiraj ključne datoteke u korijenu (Root)
+# 1. LICENSE (MIT) - Pravna zaštita
+# 2. CODE_OF_CONDUCT.md - Pravila ponašanja
+# 3. CONTRIBUTING.md - Upute za suradnike
+# 4. SECURITY.md - Sigurnosna politika
+# 5. SUPPORT.md - Upute za pomoć
+# 6. AUTHORS & CHANGELOG.md - Povijest i zasluge
+
+# Postavljanje Predložaka (Automatizacija unosa)
+mkdir -p .github/ISSUE_TEMPLATE
+# Kreiraj bug_report.md i feature_request.md unutar mape
+# Kreiraj .github/pull_request_template.md za PR-ove
 ```
 
-## 4. Upravljanje Zadacima (Task Management)
+## 4. Profesionalni Proces Zadataka
 
-### A. Glavni Zadatak (Parent Issue / User Story)
-**Uloga:** Project Manager
-**Fokus:** ŠTO i ZAŠTO.
+### A. Roditeljski Zadatak (Strategija)
 ```bash
-gh issue create --title "Funkcionalnost prijave korisnika" \
-                --body "Kao korisnik, želim se prijaviti da vidim svoje podatke." \
-                --label "enhancement" \
-                --milestone "Sprint 1" \
-                --assignee "@me"
-# (Pretpostavimo da je ovo Issue #5)
+gh issue create --title "Feat: Autentifikacija korisnika" \
+                --body "Kao korisnik, želim osigurati svoj račun." \
+                --milestone "Sprint 1" --label "enhancement"
 ```
 
-### B. Pod-zadaci (Sub-issues / Technical Tasks)
-**Uloga:** Developeri (tijekom planiranja)
-**Fokus:** KAKO.
+### B. Pod-zadaci (Tehnička provedba)
 ```bash
-# Kreiranje tehničkih zadataka
-gh issue create --title "Impl: OAuth2 Klijent" --body "Tehnički detalji..." --label "devops"
-gh issue create --title "Impl: Login Forma UI" --body "Tehnički detalji..." --label "frontend"
-# (Pretpostavimo da su ovo Issues #9, #10)
+gh issue create --title "Auth: Shema baze podataka" --label "devops"
+gh issue create --title "Auth: API Endpoints" --label "backend"
 ```
 
-### C. Povezivanje Roditelja i Djece (Sub-issue Magija)
-**Uloga:** Project Manager / Lead
-**Metoda:** GraphQL Mutacija (addSubIssue)
+### C. Hijerarhija (Povezivanje Parent/Child)
 ```bash
-# Poveži Issue #9 kao dijete Issue-a #5
+# Poveži Issue #9 (Dijete) s Issue-om #5 (Roditelj)
 gh api graphql -f query=' 
-  mutation($issueId: ID!, $subIssueId: ID!) {
-    addSubIssue(input: { issueId: $issueId, subIssueId: $subIssueId }) {
-      issue { title }
-    }
+  mutation($issueId: ID!, $subIssueId: ID!) { 
+    addSubIssue(input: { issueId: $issueId, subIssueId: $subIssueId }) { 
+      issue { title } 
+    } 
   }' -f issueId="<PARENT_GLOBAL_ID>" -f subIssueId="<CHILD_GLOBAL_ID>"
 ```
 
-## 5. Razvojni Proces (Workflow)
-**Uloga:** Developer
+## 5. Inženjerstvo i CI/CD
+**Uloga:** DevOps / Developer
 
-1.  **Odaberi zadatak:** Pomakni u "In Progress" na ploči.
-2.  **Nova grana:** `git checkout -b feature/login-auth`
-3.  **Kodiranje i testiranje.**
-4.  **Slanje koda:** `git push -u origin feature/login-auth`
-5.  **Pull Request:**
-    ```bash
-    gh pr create --title "Feat: Login Auth" --body "Closes #9, Closes #10"
-    ```
-
-## 6. Automatizacija i Upravljanje (DevOps)
-
-### CI/CD Pipeline (GitHub Actions)
-Kreiraj datoteku `.github/workflows/ci.yml`:
+### GitHub Actions (Kontinuirana Integracija)
+Kreiraj `.github/workflows/ci.yml` za automatsko testiranje:
 ```yaml
-name: CI
+name: Python CI
 on: [push, pull_request]
 jobs:
   test:
@@ -121,34 +104,29 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
       - run: pip install -r requirements.txt
-      - run: python -m unittest discover
+      - run: python -m unittest discover tests
 ```
 
-### Standardizacija (Templates)
-Kreiraj sljedeće mape i datoteke za profesionalni izgled:
+### Zaštita Grana (Zabrana push-a na master)
 ```bash
-mkdir .github/ISSUE_TEMPLATE
-# Kreiraj .github/ISSUE_TEMPLATE/bug_report.md
-# Kreiraj .github/ISSUE_TEMPLATE/feature_request.md
-# Kreiraj .github/pull_request_template.md
-# Kreiraj .github/CODEOWNERS
-# Kreiraj SECURITY.md
-```
-
-### Zaštita Grana (Branch Protection)
-**Uloga:** Project Manager
-Zabrani direktno slanje koda na master granu.
-```bash
+# Zabrani direktne push-eve i zahtijevaj prolazak testova
 gh api repos/<OWNER>/<REPO>/branches/master/protection -X PUT \
   -f required_status_checks='{"strict":true,"contexts":["test"]}' \
   -f enforce_admins=true \
-  -f required_pull_request_reviews='{"required_approving_review_count":1}' \
-  -f restrictions=null
+  -f required_pull_request_reviews='{"required_approving_review_count":1}'
 ```
 
-## 7. Upravljanje Verzijama (Releases)
-**Uloga:** Lead / PM
-Kada je Sprint gotov i CI prolazi.
+## 6. Upravljanje Verzijama (Releases)
+**Uloga:** Release Manager
 ```bash
-gh release create v1.0.0 --title "v1.0.0 - MVP" --notes "Prva produkcijska verzija."
+# Kreiraj službenu verziju s automatskim bilješkama
+gh release create v1.0.0 --title "v1.0.0 Stable" --generate-notes
 ```
+
+---
+**Završna Checklista:**
+- [ ] README.md s Badges (značkama)
+- [ ] LICENSE / CODE_OF_CONDUCT / CONTRIBUTING u Rootu
+- [ ] .github/ mapa spremna (Predlošci & Workflows)
+- [ ] Projektna ploča povezana s repozitorijem
+- [ ] Zaštita grana aktivna
