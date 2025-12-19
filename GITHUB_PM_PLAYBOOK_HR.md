@@ -1,101 +1,88 @@
-# GitHub Priručnik za Upravljanje Projektima i Inženjerstvo
+# GitHub Profesionalni Projektni Predložak (AI-Spreman)
 
-Ovaj priručnik dokumentira potpuni proces postavljanja i vođenja profesionalnog GitHub repozitorija koristeći GitHub CLI (`gh`).
+**Svrha:** Ovaj dokument služi kao vodič za ljude i **predložak za izvršavanje za AI**.
+**AI Uputa:** Kada dobiješ zadatak postaviti projekt prema ovom dokumentu, izvršavaj blokove koda sekvencijalno. Zamijeni varijable (npr. `$PROJECT_NAME`, `$USER`) stvarnim podacima.
 
 ---
 
-## 1. Inicijalizacija i Arhitektura
-**Uloga:** Tech Lead / Arhitekt
+## 🔑 AI Kontekst & Varijable
+Prije izvršavanja definiraj:
+*   `$PROJECT_NAME`: (npr. "moj-projekt")
+*   `$USER`: (npr. "MarijanMiletic")
+*   `$DESCRIPTION`: (npr. "Opis projekta...")
 
-```bash
-# Postavljanje strukture
-mkdir moj-projekt && cd moj-projekt
-echo "src/" > .gitignore
-echo "tests/" >> .gitignore
-echo "# Moj Profesionalni Projekt" > README.md
+---
 
-# Git inicijalizacija
-git init && git add . && git commit -m "Chore: Inicijalizacija projekta"
-gh repo create moj-projekt --public --source=. --remote=origin --push
+## Faza 1: Inicijalizacija & Arhitektura
+**Cilj:** Struktura mapa, git init, remote repo.
+
+```powershell
+# 1. Postavi Mape
+mkdir $PROJECT_NAME
+cd $PROJECT_NAME
+New-Item -ItemType Directory -Force -Path src, tests, .github, .github/workflows, .github/ISSUE_TEMPLATE
+
+# 2. Kreiraj Bazne Datoteke
+Set-Content -Path ".gitignore" -Value "src/__pycache__/`n*.pyc`n.env`nvenv/"
+Set-Content -Path "README.md" -Value "# $PROJECT_NAME`n`n$DESCRIPTION"
+Set-Content -Path "requirements.txt" -Value "# Deps"
+
+# 3. Git Init & Push
+git init
+git add .
+git commit -m "Chore: Inicijalni commit"
+gh repo create $PROJECT_NAME --public --source=. --remote=origin --push
 ```
 
-## 2. Napredno Planiranje (V2 Projekti)
-**Uloga:** Senior Project Manager
+## Faza 2: Project Management (V2)
+**Cilj:** Kanban ploča, povezivanje s repoom, roadmap polja.
 
-### Postavljanje i Povezivanje
-```bash
-# Kreiraj projektnu ploču (Kanban)
-gh project create --owner <USER> --title "Strateški Plan" --format json
+```powershell
+# 1. Kreiraj Projekt
+$projectJson = gh project create --owner $USER --title "Roadmap" --format json | ConvertFrom-Json
+$projectNumber = $projectJson.number
+$projectId = $projectJson.id
 
-# POVEŽI PROJEKT S REPOZITORIJEM (Ključno za vidljivost)
-# Koristi GraphQL za povezivanje Project ID-a (PVT_...) i Repo ID-a (R_...)
-gh api graphql -f query=' 
-  mutation($projectId: ID!, $repoId: ID!) { 
-    linkProjectV2ToRepository(input: { projectId: $projectId, repositoryId: $repoId }) { 
-      repository { name } 
-    } 
-  }' -f projectId="<PROJ_ID>" -f repoId="<REPO_ID>"
+# 2. Dohvati Repo ID
+$repoId = gh repo view "$USER/$PROJECT_NAME" --json id -q .id
+
+# 3. POVEŽI PROJEKT S REPOOM (GraphQL)
+gh api graphql -f query='
+  mutation($projectId: ID!, $repoId: ID!) {
+    linkProjectV2ToRepository(input: { projectId: $projectId, repositoryId: $repoId }) {
+      repository { name }
+    }
+  }' -f projectId=$projectId -f repoId=$repoId
+
+# 4. Kreiraj polja za Roadmap
+gh project field-create $projectNumber --owner $USER --name "Start Date" --data-type DATE
+gh project field-create $projectNumber --owner $USER --name "Due Date" --data-type DATE
 ```
 
-### Vizualizacija (Roadmap/Vremenska crta)
-```bash
-# Kreiraj datumska polja za Roadmap prikaz
-gh project field-create <PROJ_NUM> --owner <USER> --name "Start Date" --data-type DATE
-gh project field-create <PROJ_NUM> --owner <USER> --name "Due Date" --data-type DATE
+## Faza 3: Community Governance
+**Cilj:** Kreirati standardne datoteke u Rootu.
+
+```powershell
+# LICENSE (MIT)
+Set-Content -Path "LICENSE" -Value "MIT License`nCopyright (c) 2025 $USER..."
+
+# CODE_OF_CONDUCT (Contributor Covenant)
+Set-Content -Path "CODE_OF_CONDUCT.md" -Value "# Contributor Covenant Code of Conduct..."
+
+# CONTRIBUTING
+Set-Content -Path "CONTRIBUTING.md" -Value "# Contributing`n1. Fork`n2. PR..."
+
+# SECURITY & SUPPORT
+Set-Content -Path "SECURITY.md" -Value "# Security Policy..."
+Set-Content -Path "SUPPORT.md" -Value "# Support..."
 ```
 
-## 3. Standardi Zajednice i Upravljanje (Governance)
-**Uloga:** Compliance / Project Manager
-*Ove datoteke osiguravaju da projekt zadovoljava "GitHub Community Standards".*
+## Faza 4: Automatizacija (CI/CD)
+**Cilj:** Postaviti GitHub Actions.
 
-```bash
-# Kreiraj ključne datoteke u korijenu (Root)
-# 1. LICENSE (MIT) - Pravna zaštita
-# 2. CODE_OF_CONDUCT.md - Pravila ponašanja
-# 3. CONTRIBUTING.md - Upute za suradnike
-# 4. SECURITY.md - Sigurnosna politika
-# 5. SUPPORT.md - Upute za pomoć
-# 6. AUTHORS & CHANGELOG.md - Povijest i zasluge
-
-# Postavljanje Predložaka (Automatizacija unosa)
-mkdir -p .github/ISSUE_TEMPLATE
-# Kreiraj bug_report.md i feature_request.md unutar mape
-# Kreiraj .github/pull_request_template.md za PR-ove
-```
-
-## 4. Profesionalni Proces Zadataka
-
-### A. Roditeljski Zadatak (Strategija)
-```bash
-gh issue create --title "Feat: Autentifikacija korisnika" \
-                --body "Kao korisnik, želim osigurati svoj račun." \
-                --milestone "Sprint 1" --label "enhancement"
-```
-
-### B. Pod-zadaci (Tehnička provedba)
-```bash
-gh issue create --title "Auth: Shema baze podataka" --label "devops"
-gh issue create --title "Auth: API Endpoints" --label "backend"
-```
-
-### C. Hijerarhija (Povezivanje Parent/Child)
-```bash
-# Poveži Issue #9 (Dijete) s Issue-om #5 (Roditelj)
-gh api graphql -f query=' 
-  mutation($issueId: ID!, $subIssueId: ID!) { 
-    addSubIssue(input: { issueId: $issueId, subIssueId: $subIssueId }) { 
-      issue { title } 
-    } 
-  }' -f issueId="<PARENT_GLOBAL_ID>" -f subIssueId="<CHILD_GLOBAL_ID>"
-```
-
-## 5. Inženjerstvo i CI/CD
-**Uloga:** DevOps / Developer
-
-### GitHub Actions (Kontinuirana Integracija)
-Kreiraj `.github/workflows/ci.yml` za automatsko testiranje:
 ```yaml
-name: Python CI
+# Datoteka: .github/workflows/ci.yml
+name: CI
 on: [push, pull_request]
 jobs:
   test:
@@ -107,26 +94,23 @@ jobs:
       - run: python -m unittest discover tests
 ```
 
-### Zaštita Grana (Zabrana push-a na master)
-```bash
-# Zabrani direktne push-eve i zahtijevaj prolazak testova
-gh api repos/<OWNER>/<REPO>/branches/master/protection -X PUT \
-  -f required_status_checks='{"strict":true,"contexts":["test"]}' \
-  -f enforce_admins=true \
-  -f required_pull_request_reviews='{"required_approving_review_count":1}'
+## Faza 5: Napredni PM (Parent/Child Povezivanje)
+**Cilj:** Povezati Sub-issues s Parent Issue koristeći GraphQL.
+**AI Napomena:** Koristi točno ovu mutaciju kada korisnik traži "linkanje taskova".
+
+```powershell
+# Varijable: $ParentGlobalID (Issue ID), $ChildGlobalID (Issue ID)
+gh api graphql -f query='
+  mutation($issueId: ID!, $subIssueId: ID!) {
+    addSubIssue(input: { issueId: $issueId, subIssueId: $subIssueId }) {
+      issue { title }
+    }
+  }' -f issueId=$ParentGlobalID -f subIssueId=$ChildGlobalID
 ```
 
-## 6. Upravljanje Verzijama (Releases)
-**Uloga:** Release Manager
-```bash
-# Kreiraj službenu verziju s automatskim bilješkama
-gh release create v1.0.0 --title "v1.0.0 Stable" --generate-notes
-```
+## Faza 6: Release
+**Cilj:** Kreirati prvu verziju.
 
----
-**Završna Checklista:**
-- [ ] README.md s Badges (značkama)
-- [ ] LICENSE / CODE_OF_CONDUCT / CONTRIBUTING u Rootu
-- [ ] .github/ mapa spremna (Predlošci & Workflows)
-- [ ] Projektna ploča povezana s repozitorijem
-- [ ] Zaštita grana aktivna
+```powershell
+gh release create v0.1.0 --title "Inicijalna Verzija" --generate-notes
+```

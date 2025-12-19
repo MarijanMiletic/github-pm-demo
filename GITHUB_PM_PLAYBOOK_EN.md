@@ -1,91 +1,88 @@
-# GitHub Project Management & Engineering Playbook
+# GitHub Professional Project Template (AI-Ready)
 
-This guide documents the complete workflow for setting up and managing a professional-grade GitHub repository using the GitHub CLI (`gh`).
+**Purpose:** This document serves as both a human guide and an **AI execution template**.
+**AI Instruction:** When asked to set up a project based on this file, execute the code blocks sequentially. Replace placeholders (like `<PROJECT_NAME>`, `<USER>`) with actual context.
 
 ---
 
-## 1. Project Initialization & Architecture
-**Role:** Tech Lead / Architect
+## 🔑 AI Context & Variables
+Before execution, define:
+*   `$PROJECT_NAME`: (e.g., "my-app")
+*   `$USER`: (e.g., "MarijanMiletic")
+*   `$DESCRIPTION`: (e.g., "A new professional project")
 
-```bash
-# Setup project structure
-mkdir my-project && cd my-project
-echo "src/" > .gitignore
-echo "tests/" >> .gitignore
-echo "# My Professional Project" > README.md
+---
 
-# Initialize and push
-git init && git add . && git commit -m "Chore: Project initialization"
-gh repo create my-project --public --source=. --remote=origin --push
+## Phase 1: Initialization & Architecture
+**Goal:** Create folder structure, git init, and remote repo.
+
+```powershell
+# 1. Setup Directories
+mkdir $PROJECT_NAME
+cd $PROJECT_NAME
+New-Item -ItemType Directory -Force -Path src, tests, .github, .github/workflows, .github/ISSUE_TEMPLATE
+
+# 2. Create Base Files
+Set-Content -Path ".gitignore" -Value "src/__pycache__/`n*.pyc`n.env`nvenv/"
+Set-Content -Path "README.md" -Value "# $PROJECT_NAME`n`n$DESCRIPTION"
+Set-Content -Path "requirements.txt" -Value "# Deps"
+
+# 3. Git Init & Push
+git init
+git add .
+git commit -m "Chore: Initial commit"
+gh repo create $PROJECT_NAME --public --source=. --remote=origin --push
 ```
 
-## 2. Advanced Project Planning (V2 Projects)
-**Role:** Senior Project Manager
+## Phase 2: Project Management (V2)
+**Goal:** Create Kanban board, link to repo, and setup roadmap fields.
 
-### Setup & Linking
-```bash
-# Create the board
-gh project create --owner <USER> --title "Strategic Roadmap" --format json
+```powershell
+# 1. Create Project
+$projectJson = gh project create --owner $USER --title "Roadmap" --format json | ConvertFrom-Json
+$projectNumber = $projectJson.number
+$projectId = $projectJson.id
 
-# LINK PROJECT TO REPO (Crucial for visibility)
-# Use GraphQL to link Project ID (PVT_...) and Repo ID (R_...)
-gh api graphql -f query='\n  mutation($projectId: ID!, $repoId: ID!) {\n    linkProjectV2ToRepository(input: { projectId: $projectId, repositoryId: $repoId }) {\n      repository { name }\n    }\n  }\\n' -f projectId="<PROJ_ID>" -f repoId="<REPO_ID>"
+# 2. Get Repo ID
+$repoId = gh repo view "$USER/$PROJECT_NAME" --json id -q .id
+
+# 3. LINK PROJECT TO REPO (GraphQL)
+gh api graphql -f query='
+  mutation($projectId: ID!, $repoId: ID!) {
+    linkProjectV2ToRepository(input: { projectId: $projectId, repositoryId: $repoId }) {
+      repository { name }
+    }
+  }' -f projectId=$projectId -f repoId=$repoId
+
+# 4. Create Roadmap Fields
+gh project field-create $projectNumber --owner $USER --name "Start Date" --data-type DATE
+gh project field-create $projectNumber --owner $USER --name "Due Date" --data-type DATE
 ```
 
-### Visualizing Progress (Roadmap)
-```bash
-# Create Date fields for Timeline/Roadmap view
-gh project field-create <PROJ_NUM> --owner <USER> --name "Start Date" --data-type DATE
-gh project field-create <PROJ_NUM> --owner <USER> --name "Due Date" --data-type DATE
+## Phase 3: Community Governance
+**Goal:** Create standard health files in Root.
+
+```powershell
+# LICENSE (MIT)
+Set-Content -Path "LICENSE" -Value "MIT License`nCopyright (c) 2025 $USER..."
+
+# CODE_OF_CONDUCT (Contributor Covenant)
+Set-Content -Path "CODE_OF_CONDUCT.md" -Value "# Contributor Covenant Code of Conduct..."
+
+# CONTRIBUTING
+Set-Content -Path "CONTRIBUTING.md" -Value "# Contributing`n1. Fork`n2. PR..."
+
+# SECURITY & SUPPORT
+Set-Content -Path "SECURITY.md" -Value "# Security Policy..."
+Set-Content -Path "SUPPORT.md" -Value "# Support..."
 ```
 
-## 3. Community Standards & Governance
-**Role:** Compliance / Project Manager
-*These files ensure your project meets the "GitHub Community Standards".*
+## Phase 4: Automation (CI/CD)
+**Goal:** Setup GitHub Actions.
 
-```bash
-# Create Governance Files in Root
-# 1. LICENSE (MIT)
-# 2. CODE_OF_CONDUCT.md
-# 3. CONTRIBUTING.md
-# 4. SECURITY.md
-# 5. SUPPORT.md
-# 6. AUTHORS & CHANGELOG.md
-
-# Setup Templates (Automation for human input)
-mkdir -p .github/ISSUE_TEMPLATE
-# Create bug_report.md and feature_request.md inside
-# Create .github/pull_request_template.md
-```
-
-## 4. Professional Task Workflow
-
-### A. Parent Issue (Strategy)
-```bash
-gh issue create --title "Feat: User Authentication" \
-                --body "As a user, I want to secure my account." \
-                --milestone "Sprint 1" --label "enhancement"
-```
-
-### B. Sub-Issues (Tactics)
-```bash
-gh issue create --title "Auth: Database Schema" --label "devops"
-gh issue create --title "Auth: API Endpoints" --label "backend"
-```
-
-### C. Native Hierarchy (Parent/Child Linking)
-```bash
-# Link Issue #9 (Child) to Issue #5 (Parent)
-gh api graphql -f query='\n  mutation($issueId: ID!, $subIssueId: ID!) {\n    addSubIssue(input: { issueId: $issueId, subIssueId: $subIssueId }) {\n      issue { title }\n    }\n  }\\n' -f issueId="<PARENT_GLOBAL_ID>" -f subIssueId="<CHILD_GLOBAL_ID>"
-```
-
-## 5. Engineering & CI/CD
-**Role:** DevOps / Developer
-
-### GitHub Actions (Continuous Integration)
-Create `.github/workflows/ci.yml` to automate testing:
 ```yaml
-name: Python CI
+# File: .github/workflows/ci.yml
+name: CI
 on: [push, pull_request]
 jobs:
   test:
@@ -97,28 +94,23 @@ jobs:
       - run: python -m unittest discover tests
 ```
 
-### Branch Protection (Enforcing Laws)
-```bash
-# Prevent direct pushes and require passing CI
-gh api repos/<OWNER>/<REPO>/branches/master/protection -X PUT \
-  -f required_status_checks='{"strict":true,"contexts":["test"]}' \
-  -f enforce_admins=true \
-  -f required_pull_request_reviews='{"required_approving_review_count":1}'
+## Phase 5: Advanced PM (Parent/Child Linking)
+**Goal:** Link Sub-issues to Parent Issue using GraphQL.
+**AI Note:** Use this exact mutation when user asks to "link tasks".
+
+```powershell
+# Variables: $ParentGlobalID (Issue ID), $ChildGlobalID (Issue ID)
+gh api graphql -f query='
+  mutation($issueId: ID!, $subIssueId: ID!) {
+    addSubIssue(input: { issueId: $issueId, subIssueId: $subIssueId }) {
+      issue { title }
+    }
+  }' -f issueId=$ParentGlobalID -f subIssueId=$ChildGlobalID
 ```
 
-## 6. Release Management
-**Role:** Release Manager
-```bash
-# Create a formal release with auto-generated notes
-gh release create v1.0.0 --title "v1.0.0 Stable" --generate-notes
-```
+## Phase 6: Release
+**Goal:** Create first release.
 
----
-**Summary Checklist:**
-- [ ] README.md with Badges
-- [ ] LICENSE / CODE_OF_CONDUCT / CONTRIBUTING in Root
-- [ ] .github/ (Templates & Workflows)
-- [ ] Project Linked to Repo
-- [ ] Branch Protection Active
-
+```powershell
+gh release create v0.1.0 --title "Initial Release" --generate-notes
 ```
