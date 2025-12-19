@@ -1,3 +1,7 @@
+[![CI](https://github.com/MarijanMiletic/github-pm-demo/actions/workflows/ci.yml/badge.svg)](https://github.com/MarijanMiletic/github-pm-demo/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub release](https://img.shields.io/github/release/MarijanMiletic/github-pm-demo.svg)](https://GitHub.com/MarijanMiletic/github-pm-demo/releases/)
+
 # GitHub PM Demo
 
 Ovo je demonstracijski projekt za učenje upravljanja GitHub repozitorijima i projektima kroz CLI.
